@@ -1,3 +1,5 @@
 .vscode/
 chromedriver
 samples/
+__pycache__
+.env

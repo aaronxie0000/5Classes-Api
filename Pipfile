@@ -7,6 +7,12 @@ name = "pypi"
 beautifulsoup4 = "*"
 selenium = "*"
 lxml = "*"
+python-dotenv = "*"
+flask-restful = "*"
+flask-sqlalchemy = "*"
+flask-marshmallow = "*"
+marshmallow-sqlalchemy = "*"
+flask = "*"
 
 [dev-packages]
 
