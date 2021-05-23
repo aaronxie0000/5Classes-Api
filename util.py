@@ -1,8 +1,6 @@
 from selenium import webdriver
 from bs4 import BeautifulSoup
 
-def pagination():
-    pass
 
 def _get_page_by_helper(course, type):
     '''
@@ -28,28 +26,15 @@ def _get_page_by_helper(course, type):
     browser.switch_to.frame(second_frame)
     page_source = browser.page_source
     soup = BeautifulSoup(page_source, 'lxml')
+    browser.quit()
     return soup
-
-    # Pagination not needed as is iframe page source gives all
-    # all_soups = [soup]
-    # all_pages = browser.find_elements_by_xpath('//*[@id="menu"]/div[1]/li[*]')
-    # for page in range(0, (len(all_pages) - 3)):
-    #     # all_pages[-1].find_element_by_tag_name('a').click()
-    #     browser.find_element_by_link_text('»').click()
-    #     page_source_new = browser.page_source
-    #     soup_new = BeautifulSoup(page_source_new, 'lxml')
-    #     print(soup_new.prettify)
-    #     # all_soups.append(soup_new)
-    # return all_soups
-
 
 def get_page_by_code(course_code):
     try:
         target_soup = _get_page_by_helper(course_code, 'Course')
-        # return target_soup
+        return target_soup
     except:
         print('Call Error Returning Function')
-
 
 def get_page_by_title(course_title):
     try:
@@ -58,6 +43,19 @@ def get_page_by_title(course_title):
     except:
         print('Call Error Returning Function')
 
+def _to_days(days_abv):
+    full_days = []
+    if 'M' in days_abv:
+        full_days.append('Monday')
+    if 'T' in days_abv:
+        full_days.append('Tuesday')
+    if 'W' in days_abv:
+        full_days.append('Wednesday')
+    if 'R' in days_abv:
+        full_days.append('Thursday')
+    if 'F' in days_abv:
+        full_days.append('Friday')
+    return full_days
 
 def get_data(soup):
     all_class_info = []
@@ -66,9 +64,8 @@ def get_data(soup):
     for entry in entries:
         cells = entry.find_all('td')
         if len(cells) < 4:
-            if len(entries) < 1:
-                # Call no result function
-                continue #! to be deleted
+            if len(entries) <= 1:
+                return {"matches": []}
             else:
                 continue
         # Avaliability
@@ -78,17 +75,15 @@ def get_data(soup):
         # Location
         full_loc = cells[4].get_text()
         full_loc = full_loc.split("/ ")
-        # if '\xa0' in full_loc[0]:     
-        #     days_loc = full_loc[0].split("\xa0   ")[0]
-        #     full_time = full_loc[0].split("\xa0   ")[1].strip()
-        # else:
-        #     print( full_loc[0].strip().split())
-        #     days_loc = full_loc[0].strip().split()[0]
-        #     full_time = full_loc[0].strip().split()[1]
         days_loc = full_loc[0].strip().split()[0]
+        days_loc = _to_days(days_loc)
         full_time = full_loc[0].strip().split()[1]
-        start_time = full_time.split("-")[0]
-        end_time = full_time.split("-")[1]
+        if 'M' not in full_time:
+            start_time = 'N/A'
+            end_time = 'N/A'
+        else:
+            start_time = full_time.split("-")[0]
+            end_time = full_time.split("-")[1]
         room_loc = full_loc[1]
         # Course Code
         full_code = cells[0].get_text().split(" - ")
@@ -118,9 +113,9 @@ def get_data(soup):
             'end_time': end_time,
             'room_loc': room_loc
         }
-        print(course_info)
-        all_class_info.append(course_code)
+        all_class_info.append(course_info)
+
+    return {"matches": all_class_info}
 
 
-
-get_data(get_page_by_title('bio'))
+print(get_data(get_page_by_title('bio')))
