@@ -116,6 +116,8 @@ def get_data(soup):
     all_class_info = []
 
     entries = soup.find("table").find("tbody").find_all("tr")
+    # Pop -1 as is the results of the page
+    entries.pop()
     for entry in entries:
         if len(entries) <= 1:
             return {"matches": []}
