@@ -1,4 +1,3 @@
-from sqlalchemy.sql.functions import user
 from util import get_data, get_page_by_code, get_page_by_title
 from flask import Flask, request
 from flask_restful import Api, Resource
@@ -24,6 +23,9 @@ ma = Marshmallow(app)
 
 # * Model
 class watchListModel(db.Model):
+    '''
+    database of watched courses, connected to user
+    '''
     __tablename__ = "watchlist"
     _id = db.Column("entryid", db.Integer, primary_key=True)
     uid = db.Column("uid", db.String(255))
@@ -43,6 +45,9 @@ class watchListModel(db.Model):
 
 
 class watchListSchema(ma.Schema):
+    '''
+    schema for what data endpoint needs access to
+    '''
     class Meta:
         fields = ("name", "identifier", "course_code",
                   "course_sec", "added_on")
@@ -55,6 +60,10 @@ watchList_Schemas = watchListSchema(many=True)
 # * Routes
 class mainApi(Resource):
     def get(self):
+        '''
+        to search for course by title or code
+        accepts query param either: "code" or "title"
+        '''
         code = request.args.get('code')
         title = request.args.get('title')
         if code is None and title is None:
@@ -77,6 +86,11 @@ class mainApi(Resource):
 
 class adminApi(Resource):
     def get(self):
+        '''
+        to get all courses (over 2000)
+        Note, run time is limited by soup processing each entry rather than
+        selenium scrapping (page source gives all entries at once)
+        '''
         get_type = request.args.get('type')
         if get_type == "all":
             soup = get_page_by_title("")
@@ -86,9 +100,13 @@ class adminApi(Resource):
 
 class myClassesApi(Resource):
     def get(self):
+        '''
+        get user's watched courses' details
+        needs query params: "name" and "identifier"
+        '''
         watched_classes = {
-            #class code 1: {class(es) data},
-            #class code 2: {class(es) data}
+            #class code 1: [class(es) data dict],
+            #class code 2: [class(es) data dict]
         }
         # * Get List of Class Codes of name+id from database
         try:
@@ -118,6 +136,10 @@ class myClassesApi(Resource):
 
 class myProfileApi(Resource):
     def get(self):
+        '''
+        gets the user's watched courses
+        needs query param: "name" and "identifier"
+        '''
         try:
             name = request.args.get("name")
             identifier = request.args.get("identifier")
@@ -129,6 +151,10 @@ class myProfileApi(Resource):
         return res
 
     def put(self):
+        '''
+        adds a course to watch
+        needs body of: "name", "identifier", and "course_code"; optionally "course_sec"
+        '''
         json_data = request.get_json()
         data = watchList_Schema.load(json_data)
         try:
@@ -164,6 +190,10 @@ class myProfileApi(Resource):
             return {"error": "error in params given"}, 400
 
     def delete(self):
+        '''
+        deletes user's watched course
+        needs param: "name", "identifier", and "course_code"
+        '''
         json_data = request.get_json()
         # Not deserialize as not adding entry to database, just need the dict data
         try:
