@@ -1,3 +1,4 @@
+from sqlalchemy.sql.functions import user
 from util import get_data, get_page_by_code, get_page_by_title
 from flask import Flask, request
 from flask_restful import Api, Resource
@@ -85,15 +86,34 @@ class adminApi(Resource):
 
 class myClassesApi(Resource):
     def get(self):
-        name = request.args.get('name')
-        id = request.args.get('id')
-        if name is None or id is None:
-            return {"error": "Need both 'name' and 'id'"}, 400
+        watched_classes = {
+            #class code 1: {class(es) data},
+            #class code 2: {class(es) data}
+        }
         # * Get List of Class Codes of name+id from database
+        try:
+            name = request.args.get("name")
+            identifier = request.args.get("identifier")
+            this_uid = name + identifier
+        except:
+            return {"error": "Missing param"}, 400
+        raw_data = watchListModel.query.filter(func.lower(watchListModel.uid)==func.lower(this_uid)).all()
+        res = watchList_Schemas.dump(raw_data)
         # * Search each class
-        # * filter section, if specified (can't serach by section)
-        # * get the matches of each class and put into dict of class code and matches
-        # * return the total dict
+        for entry in res:
+            target_sec = entry['course_sec']
+            target_code = entry['course_code']
+            soup = get_page_by_code(target_code)
+            jsonData = get_data(soup)
+            if target_sec is None:
+                watched_classes[target_code] = jsonData['matches']
+            else:
+                # * filter section, if specified (can't search by section)
+                for entry in jsonData['matches']:
+                    if entry['sec_code'] == target_sec:
+                        watched_classes[target_code + ' - ' + target_sec] = [entry]
+                        break
+        return watched_classes, 200
 
 
 class myProfileApi(Resource):
@@ -117,10 +137,22 @@ class myProfileApi(Resource):
                 return {"error": "course section must be two digits (eg. 02)"}
         except:
             opt_course_sec = None
+
+        try: 
+            int(data['course_code'][-3:])
+        except:
+            return {"error": "course code must have three digits (eg. math032 instead of math32"}
+        
         matches = watchListModel.query.filter_by(name=data["name"], identifier=data["identifier"],
                                    course_code=data['course_code'], course_sec=opt_course_sec).first()
         if matches is not None:
             return {"error": "course already added"}, 400
+
+        # Because run time or scraping for each class is slow, limit number of classes can watch
+        user_entries = watchListModel.query.filter_by(name=data["name"], identifier=data["identifier"]).all()
+        if len(user_entries) >= 10:
+            return {"error": "too many courses watched, create new identifier to watch another course"}, 400
+
         try:
             entry = watchListModel(name=data["name"], identifier=data["identifier"],
                                    course_code=data['course_code'], course_sec=opt_course_sec)
